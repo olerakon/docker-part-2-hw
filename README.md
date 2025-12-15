@@ -36,6 +36,26 @@ Docker Compose позволит настроить и запустить мно�
 Ваша подсеть должна называться: <ваши фамилия и инициалы>-my-netology-hw.
 Все приложения из последующих заданий должны находиться в этой конфигурации.
 
+### Решение
+(Для моей версии docker compose 5.0.0 указание версии не требуется)
+docker-compose.yml :
+```
+#version: '5.0'
+
+networks:
+  gilels-km-my-netology-hw:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.5.0.0/16
+
+volumes:
+    prometheus_data: {}
+    grafana_data: {}
+
+services:
+```
+
 ---
 
 ### Задание 3 
@@ -46,6 +66,22 @@ Docker Compose позволит настроить и запустить мно�
 2. Добавьте необходимые тома с данными и конфигурацией (конфигурация лежит в репозитории в директории [6-04/prometheus](https://github.com/netology-code/sdvps-homeworks/tree/main/lecture_demos/6-04/prometheus) ).
 3. Обеспечьте внешний доступ к порту 9090 c докер-сервера.
 
+### Решение
+
+services:
+```
+  gilels-km-netology-prometheus:
+    image: prom/prometheus:latest
+    container_name: gilels-km-netology-prometheus
+    volumes:
+      - prometheus_data:/prometheus
+      - /home/kirill/netology-docker-hw/configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - gilels-km-my-netology-hw
+```
+
 ---
 
 ### Задание 4 
@@ -54,6 +90,20 @@ Docker Compose позволит настроить и запустить мно�
 
 1. Создайте конфигурацию docker-compose для Pushgateway с именем контейнера <ваши фамилия и инициалы>-netology-pushgateway. 
 2. Обеспечьте внешний доступ к порту 9091 c докер-сервера.
+
+
+### Решение
+
+services:
+```
+  gilels-km-netology-pushgateway:
+    image: prom/pushgateway:latest
+    container_name: gilels-km-netology-pushgateway
+    ports:
+      - "9091:9091"
+    networks:
+      - gilels-km-my-netology-hw
+```
 
 ---
 
@@ -66,6 +116,27 @@ Docker Compose позволит настроить и запустить мно�
 3. Добавьте переменную окружения с путем до файла с кастомными настройками (должен быть в томе), в самом файле пропишите логин=<ваши фамилия и инициалы> пароль=netology.
 4. Обеспечьте внешний доступ к порту 3000 c порта 80 докер-сервера.
 
+### Решение
+
+services:
+```
+  gilels-km-netology-grafana:
+    image: grafana/grafana:latest
+    container_name: gilels-km-netology-grafana
+    volumes:
+      - /home/kirill/netology-docker-hw/configs/grafana/custom.ini:/etc/grafana/grafana.ini:ro
+      - grafana_data:/var/lib/grafana
+    environment:
+       - GF_PATHS_CONFIG=/etc/grafana/grafana.ini
+    ports:
+      - "80:3000"
+    networks:
+      - gilels-km-my-netology-hw
+```
+Файл custom.ini:
+
+![alt text](https://github.com/olerakon/docker-part-2-hw/blob/main/img/5.1.png)
+
 ---
 
 ### Задание 6 
@@ -76,6 +147,8 @@ Docker Compose позволит настроить и запустить мно�
 2. Настройте режимы перезапуска для контейнеров.
 3. Настройте использование контейнерами одной сети.
 5. Запустите сценарий в detached режиме.
+
+### Решение будет приложено в пт.7
 
 ---
 
@@ -93,6 +166,85 @@ Docker Compose позволит настроить и запустить мно�
 * скриншот команды docker ps после запуске docker-compose.yml;
 * скриншот графика, постоенного на основе вашей метрики.
 
+### Решение
+Полная версия файла
+docker-compose.yml :
+```
+#version: '5.0'
+
+networks:
+  gilels-km-my-netology-hw:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.5.0.0/16
+
+volumes:
+    prometheus_data: {}
+    grafana_data: {}
+
+services:
+
+  gilels-km-netology-prometheus:
+    image: prom/prometheus:latest
+    container_name: gilels-km-netology-prometheus
+    volumes:
+#      - /home/kirill/netology-docker-hw/data/prometheus:/prometheus
+      - prometheus_data:/prometheus
+      - /home/kirill/netology-docker-hw/configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    networks:
+      - gilels-km-my-netology-hw
+    restart: always
+    depends_on:
+      - gilels-km-netology-pushgateway
+
+  gilels-km-netology-pushgateway:
+    image: prom/pushgateway:latest
+    container_name: gilels-km-netology-pushgateway
+    ports:
+      - "9091:9091"
+    networks:
+      - gilels-km-my-netology-hw
+    restart: always
+
+  gilels-km-netology-grafana:
+    image: grafana/grafana:latest
+    container_name: gilels-km-netology-grafana
+    volumes:
+#      - /home/kirill/netology-docker-hw/data/grafana:/var/lib/grafana
+      - /home/kirill/netology-docker-hw/configs/grafana/custom.ini:/etc/grafana/grafana.ini:ro
+      - grafana_data:/var/lib/grafana
+#      - ./grafana/provisioning/:/etc/grafana/provisioning/
+    environment:
+       - GF_PATHS_CONFIG=/etc/grafana/grafana.ini
+#      - GF_PATHS_CONFIG=/home/kirill/netology-docker-hw/configs/grafana/custom.ini
+    ports:
+      - "80:3000"
+    networks:
+      - gilels-km-my-netology-hw
+    restart: always
+    depends_on:
+      - gilels-km-netology-prometheus
+
+```
+Запуск docker compose:
+
+![alt text](https://github.com/olerakon/docker-part-2-hw/blob/main/img/7.1.png)
+
+Далее выполнил для сбора метрик:
+bash:
+```
+echo "gilels_km 5" | curl --data-binary @- http://localhost:9091/metrics/job/netology/instance/netology
+sleep 10
+echo "gilels_km 7" | curl --data-binary @- http://localhost:9091/metrics/job/netology/instance/netology
+sleep 10
+echo "gilels_km 3" | curl --data-binary @- http://localhost:9091/metrics/job/netology/instance/netology
+```
+Графана и графики:
+
+![alt text](https://github.com/olerakon/docker-part-2-hw/blob/main/img/7.2.png)
 ---
 
 ### Задание 8
@@ -102,6 +254,11 @@ Docker Compose позволит настроить и запустить мно�
 1. Остановите и удалите все контейнеры одной командой.
 
 В качестве решения приложите скриншот консоли с проделанными действиями.
+
+Остановка контейнеров и их удаление:
+
+![alt text](https://github.com/olerakon/docker-part-2-hw/blob/main/img/8.1.png)
+---
 
 ---
 
